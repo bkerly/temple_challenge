@@ -1,0 +1,24 @@
+{
+  "bioconductor.version": null,
+  "external.libraries": [],
+  "ignored.packages": [],
+  "package.dependency.fields": [
+    "Imports",
+    "Depends",
+    "LinkingTo"
+  ],
+  "ppm.enabled": null,
+  "ppm.ignored.urls": [],
+  "r.version": null,
+  "snapshot.type": "implicit",
+  "use.cache": true,
+  "vcs.ignore.cellar": true,
+  "vcs.ignore.library": true,
+  "vcs.ignore.local": true,
+  "vcs.manage.ignores": true,
+  "positron.assistant.enabledProviders": [
+  "openai-compatible",  //## <-- Custom Providers that adhere to OpenAI API standards
+  //"openai",    //## <-- For using OpenAI directly in 2025.10.0
+  "openai-api" //## <-- Planned renaming for OpenAI in 2025.11.0
+]
+}

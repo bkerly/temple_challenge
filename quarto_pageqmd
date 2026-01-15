@@ -1,0 +1,49 @@
+---
+title: "Temple Tower Project"
+format: html
+---
+
+```{r}
+library("tidyverse")
+library("readr")
+```
+
+```{r}
+tower_data <- read_csv("tower_data.csv") 
+sides <- 1:4
+rows <- 1:6
+space <- tower_data$Space %>% unique()
+```
+
+```{r}
+
+wrap_around <- function(x=5){
+    if(x>4){
+        return(x-4)
+    }else{
+        return(x)
+    }
+}
+
+side_sums <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
+    data$Side_new <- data$Side + alignment_matrix-1
+
+    data <- data %>%
+        rowwise() %>%
+        mutate(Side_new = wrap_around(Side_new)) %>%
+        ungroup()
+
+    data%>%
+        group_by(Side_new,Space)%>%
+        summarize(colsum = sum(Value)) %>%
+        return()
+
+}
+
+```
+
+```{r}
+alignment_matrix_expanded <- expand.grid(replicate(6, 1:4, simplify = FALSE))
+
+for(i in 1:nrow(alignment_matrix_expanded)) 
+```
