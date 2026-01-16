@@ -158,7 +158,12 @@ OK, so we've found some that work (probably)!
 Let's use the initial data function to figure out how to set up the pyramid, and then print up the recipe.
 
 ```{r}
-pyramid_builder <- function(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1), data = tower_data){
+
+good_alignment <-  good_configurations %>% select(1:6) %>% head(1)
+
+configuration_test(good_alignment)
+
+pyramid_builder <- function(alignment_matrix_that_works = good_alignment, data = tower_data){
 
     alignment_adjustment <- rep(rep(alignment_matrix_that_works, each = 3),4) %>% unlist()
 
@@ -171,6 +176,7 @@ pyramid_builder <- function(alignment_matrix_that_works = good_configurations %>
 
 }
 
-print(pyramid_builder(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1)),
-n=72)
+pyramid_builder(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1)) %>%
+    filter(Space == "L") %>%
+    print(n=6)
 ```
