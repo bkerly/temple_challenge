@@ -20,6 +20,13 @@ rows <- 1:6
 space <- tower_data$Space %>% unique()
 ```
 
+Let's add a check that the whole tower adds to 365 like its supposed to
+
+```{r}
+sum(tower_data$Value) %>%
+    print()
+```
+
 Next I'm going to make a few functions to help analyze the tower data. The first one is a helper function called "wrap around" which helps so that if I rotate a level of the tower past side 4 it is on side 1, rather than a mythical side 5.
 
 ```{r}
@@ -134,6 +141,8 @@ results_df$configuration_test_results[7]
 
 results_df$configuration_test_results[42]
 ```
+
+So now that we've got all the results, let's find the ones that have the most good columns (that is, 30 in the left and right and 31 in the center)
 
 ```{r}
 good_configuration_test <- function(test_results){
