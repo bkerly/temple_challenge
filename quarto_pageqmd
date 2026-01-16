@@ -100,8 +100,17 @@ configuration_test()
 
 ```
 
+This will cycle through the whole universe of possible alignments (4^6)
+
 ```{r}
-alignment_matrix_expanded <- expand.grid(replicate(6, 1:4, simplify = FALSE))
+alignment_matrix_expanded <- expand.grid(
+  V1 = 1:4,
+  V2 = 1:4,
+  V3 = 1:4,
+  V4 = 1:4,
+  V5 = 1:4,
+  V6 = 1:4
+)
 
 results_df <- alignment_matrix_expanded %>%
     as.tibble()
