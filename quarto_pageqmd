@@ -43,18 +43,22 @@ Finally, a big "configuration test" function will combine all those and spit out
 
 ```{r}
 
-side_sums <- function(alignment_matrix_to_test = c(2,1,2,1,2,1), data = tower_data){
-
-    alignment_adjustment <- rep(alignment_matrix_to_test, each = 3) %>% unlist()
-
-    data$Side <- data$Side + alignment_adjustment-1
-
-    data%>%
-        mutate(Side = wrap_around(Side)) %>%
-        group_by(Side,Space)%>%
-        summarize(column_sum = sum(Value)) %>%
+side_sums <- function(alignment_matrix_to_test = rep(1, 12), data = tower_data){
+    
+    # Convert to vector if needed
+    align_vec <- unlist(alignment_matrix_to_test)
+    
+    # Create adjustment: LR values go to positions 1,3,5,7,9,11,13,15,17
+    #                     M values go to positions 2,6,10,14,18
+    alignment_adjustment <- numeric(18)
+    alignment_adjustment[c(1,3,5,7,9,11,13,15,17)] <- align_vec[c(1,3,5,7,9,11)]  # L and R
+    alignment_adjustment[c(2,6,10,14,18)] <- align_vec[c(2,4,6,8,10,12)]  # M
+    
+    data %>%
+        mutate(Side_new = wrap_around(Side + alignment_adjustment - 1)) %>%
+        group_by(Side_new, Space) %>%
+        summarize(column_sum = sum(Value), .groups = 'drop') %>%
         return()
-
 }
 
 side_sums()
@@ -90,8 +94,8 @@ configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,2,1), data =
     M_result <- M_test_sums(side_sums_result = side_sums_result)
 
     combined_result <- side_sums_result %>%
-        left_join(L_R_result,by = c("Side","Space","column_sum")) %>%
-        left_join(M_result,by = c("Side","Space","column_sum")) %>%
+        left_join(L_R_result,by = c("Side_new","Space","column_sum")) %>%
+        left_join(M_result,by = c("Side_new","Space","column_sum")) %>%
         mutate(sides = coalesce(sides.x, sides.y)) %>%
         select(-sides.x, -sides.y)
 
@@ -122,17 +126,16 @@ alignment_matrix_expanded <- expand.grid(
 
 results_df <- alignment_matrix_expanded %>%
     mutate(configuration_test_results = NA) %>%
-    as.tibble()
+    as_tibble()
 
 for(i in 1:nrow(alignment_matrix_expanded)) {
     test_alignment <- alignment_matrix_expanded %>% slice(i)
-    configuration_test_results <- configuration_test(alignment_matrix = test_alignment) %>% data.frame()
+    configuration_test_results <- configuration_test(alignment_matrix_to_test = test_alignment) %>% data.frame()
     results_df$configuration_test_results[i] <- list(configuration_test_results)
-
-    print(
-        paste0(
-            "Calculating row ",i," of ", nrow(alignment_matrix_expanded))
-    )
+    
+    if(i %% 10000 == 0) {
+        print(paste0("Calculating row ", i, " of ", nrow(alignment_matrix_expanded)))
+    }
 }
 
 head(results_df)
@@ -174,20 +177,20 @@ configuration_test(good_alignment)
 
 pyramid_builder <- function(alignment_matrix_that_works = good_alignment, data = tower_data){
 
-    alignment_adjustment <- rep(rep(alignment_matrix_that_works, each = 3),4) %>% unlist()
-
-    data$Side <- data$Side + alignment_adjustment-1
-
-    data%>%
-        mutate(Side = wrap_around(Side)) %>%
-        arrange(Side,Row) %>%
+  # Match the logic from side_sums() exactly
+    alignment_adjustment <- rep(unlist(alignment_matrix_that_works), each = 3)
+    
+    data$Side_new <- wrap_around(data$Side + alignment_adjustment - 1)
+    
+    data %>%
+        arrange(Side_new, Row) %>%
         return()
 
 }
 
 pyramid_builder(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1)) %>%
-    filter(Space == "R") %>%
-    head(6) %>%
-    summarize(sum(Value))
-    print(n=6)
+   # filter(Space == "L") %>%
+    #head(6) %>%
+    #summarize(sum(Value)) %>%
+    print(n=18)
 ```
