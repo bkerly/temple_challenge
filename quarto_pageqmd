@@ -37,7 +37,10 @@ Finally, a big "configuration test" function will combine all those and spit out
 ```{r}
 
 side_sums <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
-    data$Side_new <- data$Side + alignment_matrix-1
+
+    alignment_adjustment <- rep(alignment_matrix, each = 3) %>% unlist()
+
+    data$Side_new <- data$Side + alignment_adjustment-1
 
     data <- data %>%
         rowwise() %>%
