@@ -141,7 +141,7 @@ good_configuration_test <- function(test_results){
     return(good_configuration_val)
 }
 
-good_configuration_test()
+#good_configuration_test()
 
 results_df2 <- results_df %>%
     rowwise() %>%
@@ -177,6 +177,8 @@ pyramid_builder <- function(alignment_matrix_that_works = good_alignment, data =
 }
 
 pyramid_builder(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1)) %>%
-    filter(Space == "L") %>%
+    filter(Space == "R") %>%
+    head(6) %>%
+    summarize(sum(Value))
     print(n=6)
 ```
