@@ -31,7 +31,7 @@ Next I'm going to make a few functions to help analyze the tower data. The first
 
 ```{r}
 
-wrap_around <- wrap_around <- function(x) {
+wrap_around <- function(x) {
   ifelse(x > 4, x - 4, x)
 }
 
@@ -43,19 +43,27 @@ Finally, a big "configuration test" function will combine all those and spit out
 
 ```{r}
 
-side_sums <- function(alignment_matrix_to_test = rep(1, 12), data = tower_data){
+side_sums <- function(alignment_matrix_to_test = c(rep(1, 6), rep(1, 6)), data = tower_data){
     
     # Convert to vector if needed
     align_vec <- unlist(alignment_matrix_to_test)
     
-    # Create adjustment: LR values go to positions 1,3,5,7,9,11,13,15,17
-    #                     M values go to positions 2,6,10,14,18
-    alignment_adjustment <- numeric(18)
-    alignment_adjustment[c(1,3,5,7,9,11,13,15,17)] <- align_vec[c(1,3,5,7,9,11)]  # L and R
-    alignment_adjustment[c(2,6,10,14,18)] <- align_vec[c(2,4,6,8,10,12)]  # M
+    # First 6 values control L/R (rows 1-6)
+    # Last 6 values control M (rows 1-6)
+    LR_adjustments <- align_vec[1:6]
+    M_adjustments <- align_vec[7:12]
     
-    data %>%
-        mutate(Side_new = wrap_around(Side + alignment_adjustment - 1)) %>%
+    # Apply to the data based on Row and Space
+    data_adjusted <- data %>%
+        mutate(
+            adjustment = case_when(
+                Space %in% c("L", "R") ~ LR_adjustments[Row],
+                Space == "M" ~ M_adjustments[Row]
+            ),
+            Side_new = wrap_around(Side + adjustment - 1)
+        )
+    
+    data_adjusted %>%
         group_by(Side_new, Space) %>%
         summarize(column_sum = sum(Value), .groups = 'drop') %>%
         return()
@@ -86,7 +94,7 @@ M_test_sums <- function(side_sums_result = side_sums()){
 
 M_test_sums()
 
-configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,2,1), data = tower_data){
+configuration_test <- function(alignment_matrix_to_test = c(rep(1, 6), rep(1, 6)), data = tower_data){
     side_sums_result <- side_sums(alignment_matrix_to_test = alignment_matrix_to_test, data = data)
 
     L_R_result <- L_R_test_sums(side_sums_result = side_sums_result)
@@ -103,9 +111,6 @@ configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,2,1), data =
 
 }
 
-configuration_test(c(1,2,3,4,2,1))
-
-configuration_test(c(1,2,3,2,2,1))
 
 
 
@@ -115,35 +120,79 @@ configuration_test(c(1,2,3,2,2,1))
 This will cycle through the whole universe of possible alignments (4\^6)
 
 ```{r}
-alignment_matrix_expanded <- expand.grid(
-  V1 = 1:4,
-  V2 = 1:4,
-  V3 = 1:4,
-  V4 = 1:4,
-  V5 = 1:4,
-  V6 = 1:4
+# Test only L/R alignments
+LR_alignment_matrix <- expand.grid(
+  R1_LR = 1:4, R2_LR = 1:4, R3_LR = 1:4, 
+  R4_LR = 1:4, R5_LR = 1:4, R6_LR = 1:4
 )
 
-results_df <- alignment_matrix_expanded %>%
-    mutate(configuration_test_results = NA) %>%
-    as_tibble()
-
-for(i in 1:nrow(alignment_matrix_expanded)) {
-    test_alignment <- alignment_matrix_expanded %>% slice(i)
-    configuration_test_results <- configuration_test(alignment_matrix_to_test = test_alignment) %>% data.frame()
-    results_df$configuration_test_results[i] <- list(configuration_test_results)
+side_sums_LR <- function(LR_alignment, data = tower_data){
+    LR_vec <- unlist(LR_alignment)
     
-    if(i %% 10000 == 0) {
-        print(paste0("Calculating row ", i, " of ", nrow(alignment_matrix_expanded)))
-    }
+    data %>%
+        filter(Space %in% c("L", "R")) %>%
+        mutate(
+            adjustment = LR_vec[Row],
+            Side_new = wrap_around(Side + adjustment - 1)
+        ) %>%
+        group_by(Side_new, Space) %>%
+        summarize(column_sum = sum(Value), .groups = 'drop') %>%
+        return()
 }
 
-head(results_df)
+test_LR <- function(LR_alignment){
+    sums <- side_sums_LR(LR_alignment)
+    return(sum(sums$column_sum == 30))  # Count how many equal 30
+}
 
-results_df$configuration_test_results[7]
+LR_results <- LR_alignment_matrix %>%
+    rowwise() %>%
+    mutate(LR_score = test_LR(c_across(1:6))) %>%
+    ungroup()
 
-results_df$configuration_test_results[42]
+good_LR <- LR_results %>% filter(LR_score == 8)  # All 8 L/R columns = 30
 ```
+
+
+```{r}
+M_alignment_matrix <- expand.grid(
+  R1_M = 1:4, R2_M = 1:4, R3_M = 1:4, 
+  R4_M = 1:4, R5_M = 1:4, R6_M = 1:4
+)
+
+side_sums_M <- function(M_alignment, data = tower_data){
+    M_vec <- unlist(M_alignment)
+    
+    data %>%
+        filter(Space == "M") %>%
+        mutate(
+            adjustment = M_vec[Row],
+            Side_new = wrap_around(Side + adjustment - 1)
+        ) %>%
+        group_by(Side_new, Space) %>%
+        summarize(column_sum = sum(Value), .groups = 'drop') %>%
+        return()
+}
+
+test_M <- function(M_alignment){
+    sums <- side_sums_M(M_alignment)
+    return(sum(sums$column_sum == 31))  # Count how many equal 31
+}
+
+M_results <- M_alignment_matrix %>%
+    rowwise() %>%
+    mutate(M_score = test_M(c_across(1:6))) %>%
+    ungroup()
+
+good_M <- M_results %>% filter(M_score == 4)  # All 4 M columns = 31
+```
+
+```{r}
+perfect_solutions <- crossing(good_LR, good_M) %>%
+    select(R1_LR:R6_LR, R1_M:R6_M, LR_score, M_score)
+```
+
+
 
 So now that we've got all the results, let's find the ones that have the most good columns (that is, 30 in the left and right and 31 in the center)
 
