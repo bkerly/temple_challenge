@@ -43,27 +43,10 @@ side_sums <- function(alignment_matrix_to_test = c(2,1,2,1,2,1), data = tower_da
     data$Side <- data$Side + alignment_adjustment-1
 
     data%>%
+        mutate(Side = wrap_around(Side)) %>%
         group_by(Side,Space)%>%
         summarize(column_sum = sum(Value)) %>%
         return()
-
-    # new_data_collector <- data %>%
-    #     rowwise() %>%
-    #     mutate(New_side = wrap_around(New_side)) %>%
-    #     ungroup() %>%
-    #     select(New_side,Row,Space)
-
-        
-    # new_data <- new_data_collector %>%
-    #     left_join(data %>% select(-New_side),by=c("New_side"="Side","Row","Space")) %>%
-    #     arrange(New_side,Row)
-
-
-
-    # new_data%>%
-    #     group_by(New_side,Space)%>%
-    #     summarize(column_sum = sum(Value)) %>%
-    #     return()
 
 }
 
@@ -92,7 +75,7 @@ M_test_sums <- function(side_sums_result = side_sums()){
 
 M_test_sums()
 
-configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,5,1), data = tower_data){
+configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,2,1), data = tower_data){
     side_sums_result <- side_sums(alignment_matrix_to_test = alignment_matrix_to_test, data = data)
 
     L_R_result <- L_R_test_sums(side_sums_result = side_sums_result)
@@ -109,13 +92,16 @@ configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,5,1), data =
 
 }
 
-configuration_test()
+configuration_test(c(1,2,3,4,2,1))
+
+configuration_test(c(1,2,3,2,2,1))
+
 
 
 
 ```
 
-This will cycle through the whole universe of possible alignments (4^6)
+This will cycle through the whole universe of possible alignments (4\^6)
 
 ```{r}
 alignment_matrix_expanded <- expand.grid(
@@ -149,19 +135,42 @@ results_df$configuration_test_results[7]
 results_df$configuration_test_results[42]
 ```
 
-
-
 ```{r}
-good_configuration_test <- function(test_results = configuration_test(alignment_matrix_expanded[i])){
- good_configuration_TF <- sum(test_results$sides,na.rm = FALSE) == 12
-
- return(good_configuration_TF)
+good_configuration_test <- function(test_results){
+    good_configuration_val <- sum(test_results$sides, na.rm = FALSE)
+    return(good_configuration_val)
 }
 
+good_configuration_test()
+
 results_df2 <- results_df %>%
-    mutate(test = good_configuration_test(configuration_test_results))
+    rowwise() %>%
+    mutate(test = good_configuration_test(configuration_test_results)) %>%
+    ungroup()
 
 good_configurations <- results_df2 %>%
-    filter(test) %>%
+    arrange(desc(test)) %>%
     print()
+```
+
+OK, so we've found some that work (probably)!
+
+Let's use the initial data function to figure out how to set up the pyramid, and then print up the recipe.
+
+```{r}
+pyramid_builder <- function(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1), data = tower_data){
+
+    alignment_adjustment <- rep(rep(alignment_matrix_that_works, each = 3),4) %>% unlist()
+
+    data$Side <- data$Side + alignment_adjustment-1
+
+    data%>%
+        mutate(Side = wrap_around(Side)) %>%
+        arrange(Side,Row) %>%
+        return()
+
+}
+
+print(pyramid_builder(alignment_matrix_that_works = good_configurations %>% select(1:6) %>% head(1)),
+n=72)
 ```
