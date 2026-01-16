@@ -36,21 +36,34 @@ Finally, a big "configuration test" function will combine all those and spit out
 
 ```{r}
 
-side_sums <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
+side_sums <- function(alignment_matrix_to_test = c(2,1,2,1,2,1), data = tower_data){
 
-    alignment_adjustment <- rep(alignment_matrix, each = 3) %>% unlist()
+    alignment_adjustment <- rep(alignment_matrix_to_test, each = 3) %>% unlist()
 
-    data$Side_new <- data$Side + alignment_adjustment-1
-
-    data <- data %>%
-        rowwise() %>%
-        mutate(Side_new = wrap_around(Side_new)) %>%
-        ungroup()
+    data$Side <- data$Side + alignment_adjustment-1
 
     data%>%
-        group_by(Side_new,Space)%>%
+        group_by(Side,Space)%>%
         summarize(column_sum = sum(Value)) %>%
         return()
+
+    # new_data_collector <- data %>%
+    #     rowwise() %>%
+    #     mutate(New_side = wrap_around(New_side)) %>%
+    #     ungroup() %>%
+    #     select(New_side,Row,Space)
+
+        
+    # new_data <- new_data_collector %>%
+    #     left_join(data %>% select(-New_side),by=c("New_side"="Side","Row","Space")) %>%
+    #     arrange(New_side,Row)
+
+
+
+    # new_data%>%
+    #     group_by(New_side,Space)%>%
+    #     summarize(column_sum = sum(Value)) %>%
+    #     return()
 
 }
 
@@ -79,16 +92,16 @@ M_test_sums <- function(side_sums_result = side_sums()){
 
 M_test_sums()
 
-configuration_test <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
-    side_sums_result <- side_sums(alignment_matrix = alignment_matrix, data = data)
+configuration_test <- function(alignment_matrix_to_test = c(1,2,3,4,5,1), data = tower_data){
+    side_sums_result <- side_sums(alignment_matrix_to_test = alignment_matrix_to_test, data = data)
 
     L_R_result <- L_R_test_sums(side_sums_result = side_sums_result)
 
     M_result <- M_test_sums(side_sums_result = side_sums_result)
 
     combined_result <- side_sums_result %>%
-        left_join(L_R_result,by = c("Side_new","Space","column_sum")) %>%
-        left_join(M_result,by = c("Side_new","Space","column_sum")) %>%
+        left_join(L_R_result,by = c("Side","Space","column_sum")) %>%
+        left_join(M_result,by = c("Side","Space","column_sum")) %>%
         mutate(sides = coalesce(sides.x, sides.y)) %>%
         select(-sides.x, -sides.y)
 
@@ -97,6 +110,8 @@ configuration_test <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_d
 }
 
 configuration_test()
+
+
 
 ```
 
@@ -113,11 +128,12 @@ alignment_matrix_expanded <- expand.grid(
 )
 
 results_df <- alignment_matrix_expanded %>%
+    mutate(configuration_test_results = NA) %>%
     as.tibble()
 
 for(i in 1:nrow(alignment_matrix_expanded)) {
     test_alignment <- alignment_matrix_expanded %>% slice(i)
-    configuration_test_results <- configuration_test(test_alignment) %>% data.frame()
+    configuration_test_results <- configuration_test(alignment_matrix = test_alignment) %>% data.frame()
     results_df$configuration_test_results[i] <- list(configuration_test_results)
 
     print(
@@ -127,6 +143,10 @@ for(i in 1:nrow(alignment_matrix_expanded)) {
 }
 
 head(results_df)
+
+results_df$configuration_test_results[7]
+
+results_df$configuration_test_results[42]
 ```
 
 
