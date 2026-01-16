@@ -3,27 +3,38 @@ title: "Temple Tower Project"
 format: html
 ---
 
+First I'm going to load some packages. Tidyverse has most of the functions I use for msot data analysis, plus a bunch of packages I probably won't use but it's fine for now.
+
 ```{r}
 library("tidyverse")
 library("readr")
 ```
 
+Now I'm going to load in the data for the tower. This is in the below format.
+
 ```{r}
 tower_data <- read_csv("tower_data.csv") 
+head(tower_data,20)
 sides <- 1:4
 rows <- 1:6
 space <- tower_data$Space %>% unique()
 ```
 
+Next I'm going to make a few functions to help analyze the tower data. The first one is a helper function called "wrap around" which helps so that if I rotate a level of the tower past side 4 it is on side 1, rather than a mythical side 5.
+
 ```{r}
 
-wrap_around <- function(x=5){
-    if(x>4){
-        return(x-4)
-    }else{
-        return(x)
-    }
+wrap_around <- wrap_around <- function(x) {
+  ifelse(x > 4, x - 4, x)
 }
+
+```
+
+The next few functions are for getting the sums of each column in a given configuration. The alignment of the tower is given as the "alignment matrix". The first function will rotate the tower to match a given alignment and sum up each row. Then there are tests to check if the left and right columns sum to 30 and the middle column sums to 31.
+
+Finally, a big "configuration test" function will combine all those and spit out a single dataframe.
+
+```{r}
 
 side_sums <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
     data$Side_new <- data$Side + alignment_matrix-1
@@ -35,15 +46,90 @@ side_sums <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
 
     data%>%
         group_by(Side_new,Space)%>%
-        summarize(colsum = sum(Value)) %>%
+        summarize(column_sum = sum(Value)) %>%
         return()
 
 }
+
+side_sums()
+
+L_R_test_sums <- function(side_sums_result = side_sums()){
+    L_R_Test <- side_sums_result %>%
+        filter(Space %in% c("L","R")) %>%
+        rowwise() %>%
+        mutate(sides = (column_sum == 30))
+
+    return(L_R_Test)
+
+}
+
+L_R_test_sums()
+
+M_test_sums <- function(side_sums_result = side_sums()){
+    M_Test <- side_sums_result %>%
+        filter(Space %in% c("M")) %>%
+        rowwise() %>%
+        mutate(sides = (column_sum == 31))
+
+    return(M_Test)
+}
+
+M_test_sums()
+
+configuration_test <- function(alignment_matrix = c(1,1,1,1,1,1), data = tower_data){
+    side_sums_result <- side_sums(alignment_matrix = alignment_matrix, data = data)
+
+    L_R_result <- L_R_test_sums(side_sums_result = side_sums_result)
+
+    M_result <- M_test_sums(side_sums_result = side_sums_result)
+
+    combined_result <- side_sums_result %>%
+        left_join(L_R_result,by = c("Side_new","Space","column_sum")) %>%
+        left_join(M_result,by = c("Side_new","Space","column_sum")) %>%
+        mutate(sides = coalesce(sides.x, sides.y)) %>%
+        select(-sides.x, -sides.y)
+
+    return(combined_result)
+
+}
+
+configuration_test()
 
 ```
 
 ```{r}
 alignment_matrix_expanded <- expand.grid(replicate(6, 1:4, simplify = FALSE))
 
-for(i in 1:nrow(alignment_matrix_expanded)) 
+results_df <- alignment_matrix_expanded %>%
+    as.tibble()
+
+for(i in 1:nrow(alignment_matrix_expanded)) {
+    test_alignment <- alignment_matrix_expanded %>% slice(i)
+    configuration_test_results <- configuration_test(test_alignment) %>% data.frame()
+    results_df$configuration_test_results[i] <- list(configuration_test_results)
+
+    print(
+        paste0(
+            "Calculating row ",i," of ", nrow(alignment_matrix_expanded))
+    )
+}
+
+head(results_df)
+```
+
+
+
+```{r}
+good_configuration_test <- function(test_results = configuration_test(alignment_matrix_expanded[i])){
+ good_configuration_TF <- sum(test_results$sides,na.rm = FALSE) == 12
+
+ return(good_configuration_TF)
+}
+
+results_df2 <- results_df %>%
+    mutate(test = good_configuration_test(configuration_test_results))
+
+good_configurations <- results_df2 %>%
+    filter(test) %>%
+    print()
 ```
